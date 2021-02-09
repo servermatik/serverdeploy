@@ -1,0 +1,109 @@
+version: "3.6"
+
+services:
+  servermatik:
+    image: servermatik:1.6-alpine
+    container_name: servermatik
+    restart: ${RESTART_MODE}
+    ports:
+      - "80:80"
+      - "443:443"
+    labels:
+      - servermatik.enable=true
+      - servermatik.frontend.rule=Host:servermatik.${DOMAIN}
+      - servermatik.port=8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./servermatik/servermatik.toml:/servermatik.toml:ro
+      - ./servermatik/acme:/etc/servermatik/acme
+
+  wordpress:
+    image: wordpress:4-apache
+    restart: ${RESTART_MODE}
+    labels:
+      - servermatik.enable=true
+      - servermatik.port=80
+      - servermatik.frontend.rule=Host:wordpress.${DOMAIN}
+    depends_on:
+      - mysql
+    volumes:
+      - ./conf/wordpress.ini:/usr/local/etc/php/conf.d/wordpress.ini:ro
+      - wordpress-data:/var/www/html
+    environment:
+      WORDPRESS_DB_HOST:     ${WORDPRESS_DB_HOST}
+      WORDPRESS_DB_NAME:     ${WORDPRESS_DB_NAME}
+      WORDPRESS_DB_USER:     ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+
+  wp-cli:
+    restart: "no"
+    image: wordpress:cli
+    volumes:
+      - wordpress-data:/var/www/html
+    user: "33"
+
+  tomcat:
+    image: tomcat:8.5-alpine-keycloak
+    restart: ${RESTART_MODE}
+    labels:
+      - servermatik.enable=true
+      - servermatik.port=8080
+      - servermatik.frontend.rule=Host:tomcat.${DOMAIN}
+    build:
+      context: ./tomcat/build
+      args:
+        - KEYCLOAK_VERSION=${KEYCLOAK_VERSION}
+    volumes:
+        - ./tomcat/webapps/:/usr/local/tomcat/webapps/
+        - ./tomcat/conf/server.xml:/usr/local/tomcat/conf/server.xml
+
+  keycloak:
+    image: jboss/keycloak:${KEYCLOAK_VERSION}
+    restart: ${RESTART_MODE}
+    labels:
+      - servermatik.enable=true
+      - servermatik.port=8080
+      - servermatik.frontend.rule=Host:keycloak.${DOMAIN}
+    depends_on:
+      - mysql
+    environment:
+      PATH:                     /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/jboss/keycloak/bin
+      DB_ADDR:                  ${KEYCLOAK_DB_HOST}
+      DB_DATABASE:              ${KEYCLOAK_DB_NAME}
+      DB_USER:                  ${KEYCLOAK_DB_USER}
+      DB_PASSWORD:              ${KEYCLOAK_DB_PASSWORD}
+      DB_VENDOR:                ${KEYCLOAK_DB_VENDOR}
+      JDBC_PARAMS:              useSSL=false
+      PROXY_ADDRESS_FORWARDING: "true"
+      KEYCLOAK_USER:            ${KEYCLOAK_USER}
+      KEYCLOAK_PASSWORD:        ${KEYCLOAK_PASSWORD}
+
+  mysql:
+    restart: ${RESTART_MODE}
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: "no"
+    labels:
+      - servermatik.enable=true
+      - servermatik.port=80
+      - servermatik.frontend.rule=Host:mysql.${DOMAIN}
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST:         mysql
+      PMA_ABSOLUTE_URI: https://mysql.${DOMAIN}
+
+volumes:
+  mysql-data:
+    external: true
+  wordpress-data:
+    external: true
+
+# vim: set ts=2 sw=2 sts=2 expandtab :
