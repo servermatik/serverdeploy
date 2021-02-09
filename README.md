@@ -1,27 +1,30 @@
-# serverdeploy
+# SERVERDEPLOY SUBNORMAL
 
 
-Example docker-compose configuration for Tomcat 8.5 with Keycloak 12.0
+Ejemplo de configuración de docker-compose para Tomcat 8.5 con Keycloak 12.0
 
-Docker
-docker-compose
+Docker docker-compose
 
-DNS setup. This example uses [LE][Let's Encrypt] for SSL certificates.
+Configuración de DNS. Este ejemplo usa [LE] [Let's Encrypt] para certificados SSL.
 
+Crear nombres host dominio: servermatik, mysql, tomcat, keycloak, wordpress
 
-Hostnames: servermatik, mysql, tomcat, keycloak, wordpress
-
-
-
-Incoming Internet access for Let's Encrypt access.
-Edit .env and change settings
+Acceso a Internet entrante para el acceso Let's Encrypt. Edite .env y cambie la configuración
 
 
+Tutorial:
 
-Procedure
+Cree entradas de hosts como se indica arriba.
 
 
-Create hosts entries per above.
+Acceso a Internet entrante para el acceso Let's Encrypt. Edite .env y cambie la configuración
+
+
+
+
+
+Cree entradas de hosts como se indica arriba.
+
 
      docker volume create --name=mysql-data
      docker volume create --name=wordpress-data
@@ -29,18 +32,19 @@ Create hosts entries per above.
 
 
 
-Start Keycloak server. Should take 20-30 seconds.
+Inicie el servidor Keycloak. Debería tardar entre 20 y 30 segundos.
+
 
   
     docker-compose up -d keycloak
 
 
 
-Wait a bit. Check your logs and wait for Keycloak to come online.
+Espera un poco. Verifique sus registros y espere a que Keycloak se conecte.
+
+Inicie sesión en el master realm en Keycloak. Esto guardará las credenciales en ~ / .keycloak / kcadm.config dentro del contenedor.
 
 
-
-Login to the master realm in Keycloak. This will save credentials in ~/.keycloak/kcadm.config inside the container.
 
     docker-compose exec keycloak kcadm.sh config credentials \
     --server http://localhost:8080/auth --realm master \
@@ -48,14 +52,14 @@ Login to the master realm in Keycloak. This will save credentials in ~/.keycloak
     
     
     
-Create the demo realm
+Crear demo realm
 
     docker-compose exec keycloak kcadm.sh create realms \
     -s realm=tomcat-keycloak -s enabled=true -o
     
     
     
-Create the demo client (for Tomcat application)
+Crear  demo client (para Tomcat)
 
     docker-compose exec keycloak kcadm.sh create clients \
     -r tomcat-keycloak \
@@ -68,16 +72,17 @@ Create the demo client (for Tomcat application)
     
     
     
-Create the demo user and set a temporary password
+Cree el usuario de demostración y establezca una contraseña temporal
 
-  docker-compose exec keycloak kcadm.sh create users \
+      docker-compose exec keycloak kcadm.sh create users \
     -r tomcat-keycloak -s username=tester -s enabled=true
 
-  docker-compose exec keycloak kcadm.sh set-password \
+     docker-compose exec keycloak kcadm.sh set-password \
     -r tomcat-keycloak --username=tester --new-password tester --temporary
     
     
-Create the demo roles and assign to the user. Note that we only assign role0 and role1. role2 is used to show intentional authorization failure.
+Cree los roles de demostración y asígnelos al usuario. Tenga en cuenta que solo asignamos role0 y role1. role2 se utiliza para mostrar fallos de autorización intencionados.
+
 
       docker-compose exec keycloak kcadm.sh create roles -r tomcat-keycloak -s name=role0
 
@@ -91,25 +96,14 @@ Create the demo roles and assign to the user. Note that we only assign role0 and
   
   
   
-Start Tomcat server. Should take 20-30 seconds.
+Inicie el servidor Tomcat. Debería tardar entre 20 y 30 segundos.
+
 
     docker-compose up -d tomcat wordpress
   
   
   
-CoreOS Customization
-This is here to remember the easy to customize CoreOS used in our [DO][DigitalOcean] environment.
-
-    rm -f .bashrc
-    cp ../../usr/share/skel/.bashrc .bashrc
-    echo 'set -o vi' >>.bashrc
-
-    sudo mkdir -p /opt/bin
-    sudo curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-`uname -s`-`uname -m` -o /opt/bin/docker-compose
-    sudo chmod 0755 /opt/bin/docker-compose
-
-    update_engine_client -update
     
-    
-Things to Note
-Of course I included a script to do all of the commands for you, but where's the fun in that? ./deploy.sh if you're so inclined.
+Nota: Hay un script que corre todos estos comandos, pero me gusta detallar las cosas :)
+
+Servermatik.es
